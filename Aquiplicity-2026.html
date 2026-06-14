@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aquiplicity 2026 (Max-Deviation Layer Selection • Single Threshold • Area Lasso &amp; Brush Draw)</title>
+    <style>
+        /* CSS Variables for Theming (unchanged) */
+        :root {
+            --bg-primary: #e9e9e9;
+            --bg-secondary: #f0f0f0;
+            --bg-tertiary: #f8f8f8;
+            --bg-controls: #dcdcdc;
+            --bg-canvas: #ffffff;
+            --bg-marquee: #cccccc;
+
+            --text-primary: #333333;
+            --text-secondary: #555555;
+            --text-marquee: #000000;
+
+            --border-primary: #999999;
+            --border-secondary: #cccccc;
+            --border-inset-light: rgba(255, 255, 255, 0.6);
+            --border-inset-dark: rgba(0, 0, 0, 0.5);
+
+            --button-bg: linear-gradient(to bottom, #f7f7f7, #e0e0e0);
+            --button-hover-bg: linear-gradient(to bottom, #ffffff, #e6e6e6);
+            --button-active-bg: linear-gradient(to bottom, #d9d9d9, #e0e0e0);
+            --button-border: #999999;
+            --button-text: #333333;
+            --button-shadow: 0 2px 3px rgba(0,0,0,0.15);
+            --button-active-shadow: inset 0 2px 3px rgba(0,0,0,0.2);
+
+            --action-button-bg: #5cb85c;
+            --action-button-hover-bg: #6cd96c;
+            --reset-button-bg: #cc0000;
+            --reset-button-hover-bg: #e60000;
+            --special-button-bg: #0066cc;
+            --special-button-hover-bg: #0077e6;
+            --button-disabled-bg: #cccccc;
+            --button-disabled-text: #666666;
+
+            --slider-track-bg: #b0b0b0;
+            --slider-thumb-bg: #666666;
+            --slider-thumb-border: #333333;
+        }
+
+        body.dark-mode {
+            --bg-primary: #3c3c3c;
+            --bg-secondary: #2a2a2a;
+            --bg-tertiary: #333333;
+            --bg-controls: #212121;
+            --bg-canvas: #1c1c1c;
+            --bg-marquee: #1a1a1a;
+
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-marquee: #cccccc;
+
+            --border-primary: #555555;
+            --border-secondary: #444444;
+            --border-inset-light: rgba(255, 255, 255, 0.1);
+            --border-inset-dark: rgba(0, 0, 0, 0.7);
+
+            --button-bg: linear-gradient(to bottom, #5a5a5a, #404040);
+            --button-hover-bg: linear-gradient(to bottom, #6a6a6a, #505050);
+            --button-active-bg: linear-gradient(to bottom, #3a3a3a, #404040);
+            --button-border: #222222;
+            --button-text: #e0e0e0;
+            --button-shadow: 0 2px 3px rgba(0,0,0,0.4);
+            --button-active-shadow: inset 0 2px 3px rgba(0,0,0,0.5);
+
+            --action-button-bg: #4a8c4a;
+            --action-button-hover-bg: #5a9c5a;
+            --reset-button-bg: #a03030;
+            --reset-button-hover-bg: #b04040;
+            --special-button-bg: #3a7ab0;
+            --special-button-hover-bg: #4a8ac0;
+            --button-disabled-bg: #4f4f4f;
+            --button-disabled-text: #888888;
+
+            --slider-track-bg: #555555;
+            --slider-thumb-bg: #bbbbbb;
+            --slider-thumb-border: #e0e0e0;
+        }
+
+        /* Base Styles (unchanged) */
+        body {
+            margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
+            background-color: var(--bg-primary); color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Marquee - SLOWER SCROLLING */
+        #marqueeContainer {
+            position: fixed; top: 0; left: 0; width: 100%;
+            background: var(--bg-marquee); border-bottom: 2px solid var(--border-primary);
+            overflow: hidden; height: 20px; z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        #marquee {
+            font-size: 12px; white-space: nowrap; 
+            animation: scroll 120s linear infinite;   /* ← Much slower (was 40s) */
+            display: inline-block; padding-left: 100%;
+            color: var(--text-marquee);
+        }
+        @keyframes scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-250%); } }
+
+        /* Controls Panel */
+        #controls {
+            display: flex; align-items: center; padding: 8px 10px; flex-wrap: wrap; margin-top: 22px;
+            background: var(--bg-controls);
+            border-bottom: 2px solid var(--border-primary);
+            box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Main Layout */
+        #mainContainer { display: flex; flex: 1; overflow: hidden; }
+        #thumbnailStrip {
+            display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
+            padding: 5px; border-right: 2px solid var(--border-primary); background: var(--bg-secondary);
+            width: 165px; flex-shrink: 0;
+        }
+        #workingArea {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            overflow-y: auto; overflow-x: hidden; padding: 10px;
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border-inset-light);
+        }
+        canvas {
+            border: 1px outset var(--border-primary);
+            background-color: var(--bg-canvas);
+            max-width: 100%; max-height: calc(100% - 60px); display: block; object-fit: contain;
+            cursor: crosshair; box-sizing: border-box;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        /* Thumbnails */
+        .thumbnail-container {
+            position: relative; width: 150px; height: 112px; margin-bottom: 8px;
+            display: inline-block;
+        }
+        .thumbnail {
+            width: 100%; height: 100%; object-fit: cover;
+            border: 1px solid var(--border-primary);
+            outline: 1px solid transparent;
+            cursor: pointer; background-color: #fff; display: block;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.4);
+            transition: all 0.2s ease;
+        }
+        .thumbnail:hover {
+            border-color: var(--text-primary);
+            box-shadow: inset 0 0 2px rgba(0,0,0,0.2), 0 0 5px var(--special-button-bg);
+        }
+        .remove-thumbnail-btn {
+            position: absolute; top: -1px; right: -1px; width: 20px; height: 20px;
+            background-color: rgba(204, 0, 0, 0.8); color: white;
+            border: 1px solid rgba(150, 0, 0, 0.9);
+            border-radius: 0;
+            cursor: pointer; font-size: 14px; font-weight: bold; line-height: 17px;
+            text-align: center; display: none; z-index: 10; padding: 0;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .thumbnail-container:hover .remove-thumbnail-btn { display: block; }
+        .remove-thumbnail-btn:hover { background-color: rgba(255, 0, 0, 0.9); }
+        .remove-thumbnail-btn:active { transform: scale(0.95); }
+
+        /* Status & Buttons Container */
+        #status {
+            margin: 5px; font-size: 14px; text-align: center; flex-shrink: 0; min-height: 1.2em;
+            color: var(--text-secondary); width: 100%;
+            text-shadow: 1px 1px 1px var(--bg-primary);
+        }
+        #canvasButtonContainer { display: flex; justify-content: center; margin-top: 10px; flex-shrink: 0; width: 100%; }
+
+        /* Generic Button Styles */
+        button, input[type="file"]::file-selector-button {
+            margin: 5px; padding: 6px 12px; font-size: 12px; font-weight: bold;
+            border-radius: 0; border: 1px solid var(--button-border);
+            cursor: pointer;
+            transition: all 0.1s ease-out;
+            background: var(--button-bg); color: var(--button-text);
+            box-shadow: var(--button-shadow); text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        button:not(:disabled):hover, input[type="file"]::file-selector-button:hover {
+            background: var(--button-hover-bg);
+            box-shadow: 0 3px 4px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        button:not(:disabled):active, input[type="file"]::file-selector-button:active {
+            box-shadow: var(--button-active-shadow);
+            transform: translateY(1px);
+            background: var(--button-active-bg);
+        }
+        button:disabled {
+            background: var(--button-disabled-bg) !important;
+            color: var(--button-disabled-text) !important;
+            cursor: not-allowed; box-shadow: none !important; transform: none !important;
+            border-color: #555 !important;
+        }
+
+        /* Specific Button Colors */
+        .action-button { background: var(--action-button-bg); color: white; border-color: #3e8e3e; }
+        .action-button:hover:not(:disabled) { background: var(--action-button-hover-bg); }
+        .reset-button { background: var(--reset-button-bg); color: white; border-color: #8b0000; }
+        .reset-button:hover:not(:disabled) { background: var(--reset-button-hover-bg); }
+        .tracy-rose-button { background: var(--special-button-bg); color: white; border-color: #004c99; }
+        .tracy-rose-button:hover:not(:disabled) { background: var(--special-button-hover-bg); }
+
+        /* Sliders */
+        .slider-container { margin: 0 10px; display: flex; align-items: center; color: var(--text-secondary); }
+        .slider-label { margin-right: 8px; font-size: 12px; white-space: nowrap; }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100px; height: 8px;
+            background: var(--slider-track-bg);
+            outline: none; cursor: pointer; border: 1px solid var(--border-primary);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+            padding: 0; margin: 0 5px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 16px; height: 16px;
+            background: var(--slider-thumb-bg); border: 1px solid var(--slider-thumb-border);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+            cursor: grab;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 15px; height: 15px;
+            background: var(--slider-thumb-bg); border: 1px solid var(--slider-thumb-border);
+            border-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+            cursor: grab;
+        }
+        .slider-value { margin-left: 8px; min-width: 40px; font-size: 12px; text-align: right; font-weight: bold; }
+
+        /* Dark Mode Toggle */
+        #mode-toggle { margin-left: auto; }
+    </style>
+</head>
+<body>
+    <!-- Marquee and Controls -->
+    <div id="marqueeContainer"><div id="marquee">Simply draw with you left
+mouse button and bring that image forward.  Also use the alt key for lasso
+sweeping larger portions of the image to bring forward faster. Images auto-composed on load. Adjust Threshold &amp; Compose! • NEW: Max-Deviation Selection for overlapping subjects • Patch (Ctrl+Drag) / Blend (Alt+Drag) / Gradient (Shift+Drag) / Patch Brush (Draw - size adjustable) / Undo. Click 'X' on thumbnails to remove.</div></div>
+    <div id="controls">
+        <input type="file" id="imageInput" multiple accept="image/*">
+        <button id="composeButton" class="action-button" onclick="composeImages()" disabled>Compose!</button>
+        <button id="undoButton" class="action-button" onclick="undoAction()" disabled>Undo</button>
+        <button class="reset-button" onclick="resetApplication()">Reset</button>
+        <div class="slider-container">
+            <span class="slider-label">Threshold:</span>
+            <input type="range" id="threshold" min="0.01" max="1.0" step="0.01" value="0.15">
+            <span class="slider-value" id="threshold-value">15%</span>
+        </div>
+         <div class="slider-container">
+            <span class="slider-label">Brush Size:</span>
+            <input type="range" id="brushSize" min="4" max="200" step="2" value="100">
+            <span class="slider-value" id="brushSize-value">100px</span>
+        </div>
+        <button class="tracy-rose-button" onclick="setTracyRosePreset()">By Tracy Rose</button>
+        <button id="mode-toggle" onclick="toggleDarkMode()">Dark Mode</button>
+    </div>
+    <!-- Main Content -->
+    <div id="mainContainer">
+        <div id="thumbnailStrip"></div>
+        <div id="workingArea">
+            <canvas id="canvasOutput"></canvas>
+            <div id="canvasButtonContainer"><button id="saveButton" class="action-button" onclick="saveImage()" disabled>Save Master Image</button></div>
+            <div id="status">Upload images to begin</div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // --- Dark Mode Toggle ---
+        function toggleDarkMode() {
+            const body = document.body;
+            const toggleButton = document.getElementById('mode-toggle');
+            body.classList.toggle('dark-mode');
+
+            if (body.classList.contains('dark-mode')) {
+                toggleButton.textContent = 'Light Mode';
+            } else {
+                toggleButton.textContent = 'Dark Mode';
+            }
+            displayMasterImage();
+        }
+
+        class ImageStack {
+            constructor() { this.images = []; this.width = 0; this.height = 0; }
+
+            async addImage(file) {
+                const img = new Image();
+                const objectUrl = URL.createObjectURL(file);
+                try {
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = (err) => reject(new Error(`Image load failed: ${file.name} - ${err.type || 'Unknown error'}`));
+                        img.src = objectUrl;
+                    });
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+                    if (this.images.length === 0) {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        this.width = img.width;
+                        this.height = img.height;
+                        console.log(`Setting stack dimensions to ${this.width}x${this.height} based on first image: ${file.name}`);
+                        if (this.width > 4000 || this.height > 4000) {
+                            console.warn(`Warning: Processing large image resolution (${this.width}x${this.height}). This may be slow and use significant memory.`);
+                            updateStatus(`Warning: Large resolution (${this.width}x${this.height}). Processing may be slow.`);
+                        }
+                    } else {
+                        if (img.width !== this.width || img.height !== this.height) {
+                            console.log(`Resizing image ${file.name} (${img.width}x${img.height}) to match stack dimensions (${this.width}x${this.height})`);
+                        }
+                        canvas.width = this.width;
+                        canvas.height = this.height;
+                    }
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    for (let i = 3; i < imageData.data.length; i += 4) { imageData.data[i] = 255; }
+                    this.images.push(imageData);
+                    console.log(`Added image ${file.name} (${imageData.width}x${imageData.height}) to stack. Total: ${this.images.length}`);
+                } finally {
+                    URL.revokeObjectURL(objectUrl);
+                }
+            }
+
+            smoothLayer(imageData, iterations = 6) {
+                if (!imageData) return null;
+                const data = new Float32Array(imageData.data);
+                const temp = new Float32Array(data.length);
+                const width = imageData.width;
+                const height = imageData.height;
+                for (let iter = 0; iter < iterations; iter++) {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const idx = (y * width + x) * 4;
+                            if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+                                for (let c = 0; c < 4; c++) { temp[idx + c] = data[idx + c]; }
+                            } else {
+                                for (let c = 0; c < 3; c++) {
+                                    temp[idx + c] = (
+                                        data[((y - 1) * width + x) * 4 + c] +
+                                        data[((y + 1) * width + x) * 4 + c] +
+                                        data[(y * width + (x - 1)) * 4 + c] +
+                                        data[(y * width + (x + 1)) * 4 + c]
+                                    ) / 4;
+                                }
+                                temp[idx + 3] = data[idx + 3];
+                            }
+                        }
+                    }
+                    data.set(temp);
+                }
+                const result = new Uint8ClampedArray(data.length);
+                for (let i = 0; i < data.length; i++) {
+                    result[i] = Math.round(Math.min(255, Math.max(0, data[i])));
+                }
+                return new ImageData(result, width, height);
+            }
+
+            colorDistance(r1, g1, b1, r2, g2, b2) {
+                const dr = r1 - r2; const dg = g1 - g2; const db = b1 - b2;
+                return Math.sqrt(dr * dr + dg * dg + db * db);
+            }
+
+            async compose(threshold) {
+                if (this.images.length < 2) { throw new Error("Need at least two images"); }
+                const percentageThreshold = (threshold / 255 * 100).toFixed(0);
+                console.log("Starting composition with", this.images.length, "images and threshold:", threshold, `(~${percentageThreshold}%) — using MAX-DEVIATION selection`);
+                console.log(`Composition dimensions: ${this.width}x${this.height}`);
+
+                updateStatus("Smoothing layers..."); await new Promise(resolve => setTimeout(resolve, 10));
+                const smoothedLayers = [];
+                for (let i = 0; i < this.images.length; i++) {
+                    updateStatus(`Smoothing layer ${i+1} of ${this.images.length}...`);
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    smoothedLayers.push(this.smoothLayer(this.images[i]));
+                    if (!smoothedLayers[i]) { throw new Error(`Smoothing failed for layer ${i}`); }
+                }
+                console.log(`${smoothedLayers.length} layers smoothed.`);
+
+                const masterImageDataBuffer = new Uint8ClampedArray(this.width * this.height * 4);
+                const layerMatrix = new Uint8Array(this.width * this.height);
+                updateStatus("Processing pixels with Max-Deviation selection..."); await new Promise(resolve => setTimeout(resolve, 10));
+                console.log("Processing pixels with Max-Deviation selection...");
+
+                const w = this.width; const h = this.height; const totalPixels = w * h;
+                let processedPixels = 0; const reportInterval = Math.max(10, Math.floor(h / 20));
+
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const idx = (y * w + x) * 4;
+                        const baseR_s = smoothedLayers[0].data[idx];
+                        const baseG_s = smoothedLayers[0].data[idx + 1];
+                        const baseB_s = smoothedLayers[0].data[idx + 2];
+
+                        // === IMPROVED MAX-DEVIATION LOGIC ===
+                        let bestLayerIndex = 0;
+                        let maxDist = 0;
+
+                        for (let layerIdx = 1; layerIdx < this.images.length; layerIdx++) {
+                            const currentPixelData_s = smoothedLayers[layerIdx].data;
+                            const currentR_s = currentPixelData_s[idx];
+                            const currentG_s = currentPixelData_s[idx + 1];
+                            const currentB_s = currentPixelData_s[idx + 2];
+                            const dist = this.colorDistance(currentR_s, currentG_s, currentB_s, baseR_s, baseG_s, baseB_s);
+
+                            if (dist > maxDist) {
+                                maxDist = dist;
+                                bestLayerIndex = layerIdx;
+                            } else if (dist > maxDist - 5 && layerIdx > bestLayerIndex) {
+                                // Tie-breaker: when two layers have very similar strong deviation,
+                                // slightly prefer the later-uploaded layer (often the more intended pose)
+                                bestLayerIndex = layerIdx;
+                            }
+                        }
+
+                        // Only override base if the strongest change exceeds threshold
+                        if (maxDist <= threshold) {
+                            bestLayerIndex = 0;
+                        }
+                        // === END IMPROVED LOGIC ===
+
+                        const sourceImageData = this.images[bestLayerIndex].data;
+                        masterImageDataBuffer[idx] = sourceImageData[idx];
+                        masterImageDataBuffer[idx + 1] = sourceImageData[idx + 1];
+                        masterImageDataBuffer[idx + 2] = sourceImageData[idx + 2];
+                        masterImageDataBuffer[idx + 3] = sourceImageData[idx + 3];
+                        layerMatrix[y * w + x] = bestLayerIndex;
+                        processedPixels++;
+                    }
+                    if (y % reportInterval === 0 && y > 0) {
+                        const progress = Math.round((processedPixels / totalPixels) * 100);
+                        updateStatus(`Processing pixels with Max-Deviation selection... (${progress}%)`);
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+                console.log("Composition completed (Max-Deviation selection).");
+                return { imageData: new ImageData(masterImageDataBuffer, w, h), layerMatrix };
+            }
+        }
+
+        // --- Global Variables (unchanged) ---
+        const MAX_HISTORY = 15;
+        const BLEND_LASSO_RADIUS = 2;
+        const GRADIENT_LASSO_OPACITY = 0.25;
+
+        let canvas, ctx;
+        let imageStack = new ImageStack();
+        let statusEl, composeButton, thumbnailStrip, undoButton, saveButton;
+        let masterImageData = null; let layerMatrix = null;
+        let lassoPoints = [];
+        let drawingLasso = false; let isPatchLasso = false; let isBlendLasso = false; let isGradientLasso = false;
+        let drawingBrush = false;
+        let historyStack = []; let isComposing = false;
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('canvasOutput');
+            ctx = canvas.getContext('2d', { willReadFrequently: true });
+            statusEl = document.getElementById('status');
+            composeButton = document.getElementById('composeButton');
+            thumbnailStrip = document.getElementById('thumbnailStrip');
+            undoButton = document.getElementById('undoButton');
+            saveButton = document.getElementById('saveButton');
+            if (!canvas || !ctx || !composeButton) { updateStatus('Error: Core UI elements failed to load!', true); return; }
+            document.getElementById('imageInput').addEventListener('change', handleImageUpload);
+            setupCanvasEvents();
+            setupKeyboardShortcuts();
+
+            const thresholdSlider = document.getElementById('threshold');
+            const thresholdValueDisplay = document.getElementById('threshold-value');
+            if (thresholdSlider && thresholdValueDisplay) {
+                const updateThresholdDisplay = () => {
+                    const percentage = (parseFloat(thresholdSlider.value) * 100).toFixed(0);
+                    thresholdValueDisplay.textContent = percentage + '%';
+                };
+                thresholdSlider.addEventListener('input', updateThresholdDisplay);
+                updateThresholdDisplay();
+            }
+
+            const brushSizeSlider = document.getElementById('brushSize');
+            const brushSizeValueDisplay = document.getElementById('brushSize-value');
+            if (brushSizeSlider && brushSizeValueDisplay) {
+                const updateBrushSizeDisplay = () => {
+                    brushSizeValueDisplay.textContent = brushSizeSlider.value + 'px';
+                };
+                brushSizeSlider.addEventListener('input', updateBrushSizeDisplay);
+                updateBrushSizeDisplay();
+            }
+
+            updateUndoButtonState(); updateSaveButtonState(); updateComposeButtonState();
+            console.log('Aquiplicity 2026 Initialized (Max-Deviation Selection, Single Threshold, Area Lasso, Brush Draw w/ Slider)');
+        });
+
+        // --- UI Update Functions (unchanged) ---
+        function updateStatus(message, isError = false) {
+            if (statusEl) {
+                statusEl.textContent = message;
+                const errorColor = document.body.classList.contains('dark-mode') ? '#ff8a80' : 'red';
+                statusEl.style.color = isError ? errorColor : 'var(--text-secondary)';
+            }
+            if (isError) { console.error("Status:", message); } else { console.log("Status:", message); }
+        }
+        function updateUndoButtonState() { if (undoButton) undoButton.disabled = historyStack.length === 0 || isComposing; }
+        function updateSaveButtonState() { if (saveButton) saveButton.disabled = masterImageData === null || isComposing; }
+        function updateComposeButtonState() { if (composeButton) composeButton.disabled = imageStack.images.length < 2 || isComposing; }
+        function setUIBusy(busy) {
+            isComposing = busy;
+            updateComposeButtonState(); updateUndoButtonState(); updateSaveButtonState();
+            document.body.style.cursor = busy ? 'wait' : 'default';
+            canvas.style.cursor = busy ? 'wait' : 'crosshair';
+            document.getElementById('threshold').disabled = busy;
+            document.getElementById('brushSize').disabled = busy;
+            if (document.getElementById('imageInput')) document.getElementById('imageInput').disabled = busy;
+            if (document.querySelector('.reset-button')) document.querySelector('.reset-button').disabled = busy;
+            if (document.querySelector('.tracy-rose-button')) document.querySelector('.tracy-rose-button').disabled = busy;
+            document.querySelectorAll('.remove-thumbnail-btn').forEach(btn => btn.disabled = busy);
+        }
+
+        // --- Core Logic Functions (unchanged) ---
+        function fitToScreen(imgWidth, imgHeight) { /* unchanged */ 
+            const container = document.getElementById('workingArea'); if (!container) return { width: imgWidth, height: imgHeight };
+            const containerStyle = window.getComputedStyle(container);
+            const paddingX = parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight);
+            const paddingY = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
+            const buttonsHeight = document.getElementById('canvasButtonContainer')?.offsetHeight || 0;
+            const statusHeight = statusEl?.offsetHeight || 0;
+            const maxWidth = container.clientWidth - paddingX - 2;
+            const maxHeight = container.clientHeight - paddingY - buttonsHeight - statusHeight - 12;
+            const aspectRatio = imgWidth / imgHeight;
+            let newWidth = Math.min(imgWidth, maxWidth); let newHeight = newWidth / aspectRatio;
+            if (newHeight > maxHeight) { newHeight = maxHeight; newWidth = newHeight * aspectRatio; }
+            newWidth = Math.max(10, Math.floor(newWidth)); newHeight = Math.max(10, Math.floor(newHeight));
+            return { width: newWidth, height: newHeight };
+        }
+        function getThreshold() { return parseFloat(document.getElementById('threshold').value) * 255; }
+        function getBrushSize() { return parseInt(document.getElementById('brushSize').value, 10); }
+
+        // --- Undo Functionality (unchanged) ---
+        function saveStateForUndo(actionDescription = "action") {
+            if (!masterImageData || isComposing) return;
+            try {
+                const stateToSave = new ImageData(new Uint8ClampedArray(masterImageData.data), masterImageData.width, masterImageData.height);
+                historyStack.push(stateToSave);
+                if (historyStack.length > MAX_HISTORY) { historyStack.shift(); }
+                updateUndoButtonState();
+                console.log(`Saved state for undo: ${actionDescription}`);
+            } catch(e){ console.error("Failed to save state for undo:", e); updateStatus("Error saving undo state.", true);}
+        }
+        function undoAction() {
+            if (historyStack.length === 0 || isComposing) { updateStatus(isComposing ? "Cannot undo while composing" : "Nothing to undo."); return; }
+            const previousState = historyStack.pop();
+            masterImageData = previousState;
+            displayMasterImage();
+            updateUndoButtonState();
+            updateStatus('Undo successful');
+            console.log("Undo action performed.");
+        }
+
+        // --- Keyboard Shortcuts (unchanged) ---
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (!undoButton.disabled) { undoAction(); } }
+            });
+        }
+
+        // --- Image Handling (unchanged - auto-compose preserved) ---
+        async function handleImageUpload(e) {
+            const files = e.target.files; if (!files.length) { updateStatus('No files selected'); return; }
+            setUIBusy(true); updateStatus(`Loading ${files.length} image(s)...`); resetApplicationState(false);
+            const MAX_IMAGES = 100; let shouldAutoCompose = false;
+            try {
+                for (let i = 0; i < Math.min(files.length, MAX_IMAGES); i++) {
+                    const file = files[i];
+                    updateStatus(`Loading image ${i + 1} of ${Math.min(files.length, MAX_IMAGES)}: ${file.name}`);
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    const currentStackIndex = imageStack.images.length;
+                    await imageStack.addImage(file);
+                    const sourceImageData = imageStack.images[currentStackIndex];
+                    if (!sourceImageData) continue;
+                    const tempSourceCanvas = document.createElement('canvas');
+                    tempSourceCanvas.width = sourceImageData.width; tempSourceCanvas.height = sourceImageData.height;
+                    const tempSourceCtx = tempSourceCanvas.getContext('2d');
+                    tempSourceCtx.putImageData(sourceImageData, 0, 0);
+                    const thumbCanvas = document.createElement('canvas'); thumbCanvas.width = 150; thumbCanvas.height = 112;
+                    const thumbCtx = thumbCanvas.getContext('2d');
+                    thumbCtx.drawImage(tempSourceCanvas, 0, 0, tempSourceCanvas.width, tempSourceCanvas.height, 0, 0, 150, 112);
+                    const thumbContainer = document.createElement('div'); thumbContainer.className = 'thumbnail-container'; thumbContainer.dataset.index = currentStackIndex;
+                    const thumbImg = new Image(); thumbImg.src = thumbCanvas.toDataURL('image/png'); thumbImg.className = 'thumbnail';
+                    thumbImg.title = `Layer ${currentStackIndex}: ${file.name} (${imageStack.width}x${imageStack.height})`;
+                    const removeBtn = document.createElement('button'); removeBtn.className = 'remove-thumbnail-btn'; removeBtn.innerHTML = '×'; removeBtn.title = 'Remove this layer';
+                    removeBtn.onclick = (event) => { event.stopPropagation(); removeImage(parseInt(thumbContainer.dataset.index)); };
+                    thumbContainer.appendChild(thumbImg); thumbContainer.appendChild(removeBtn); thumbnailStrip.appendChild(thumbContainer);
+                }
+                if (imageStack.width > 0 && imageStack.height > 0) {
+                    canvas.width = imageStack.width; canvas.height = imageStack.height;
+                    console.log(`Main canvas element resized to ${canvas.width}x${canvas.height}`);
+                } else if (files.length > 0) { updateStatus("Warning: Could not determine image dimensions.", true); }
+                let loadedCountMsg = `${imageStack.images.length} image${imageStack.images.length === 1 ? '' : 's'} loaded.`;
+                if (files.length > MAX_IMAGES) { loadedCountMsg += ` (Processing limited to first ${MAX_IMAGES})`; }
+                if (imageStack.width > 0) { loadedCountMsg += ` Processing at ${imageStack.width}x${imageStack.height}.`; }
+                updateStatus(loadedCountMsg);
+                if (imageStack.images.length === 1) {
+                    masterImageData = imageStack.images[0]; displayMasterImage(); updateSaveButtonState(); updateComposeButtonState();
+                } else if (imageStack.images.length > 1) {
+                    if (masterImageData) { masterImageData = null; layerMatrix = null; displayMasterImage(); }
+                    shouldAutoCompose = true; updateComposeButtonState(); updateSaveButtonState();
+                } else { updateComposeButtonState(); updateSaveButtonState(); }
+                if (shouldAutoCompose) {
+                    console.log("Multiple images loaded, triggering automatic composition...");
+                    updateStatus('Images loaded, starting automatic composition...');
+                    await composeImages();
+                }
+            } catch (error) {
+                console.error('Error loading images:', error);
+                updateStatus(`Error loading images: ${error.message || 'Unknown error'}`, true);
+            } finally { setUIBusy(false); }
+        }
+
+        function removeImage(indexToRemove) {
+            if (isComposing) { updateStatus("Cannot remove images while composing.", true); return; }
+            if (indexToRemove < 0 || indexToRemove >= imageStack.images.length) { console.error(`Invalid index to remove: ${indexToRemove}`); updateStatus("Error: Invalid image index for removal.", true); return; }
+            console.log(`Removing image at index ${indexToRemove}`);
+            if (masterImageData) { saveStateForUndo(`before removing image ${indexToRemove}`); }
+            const removedImage = imageStack.images.splice(indexToRemove, 1);
+            if (removedImage && removedImage.length > 0) {
+                updateStatus(`Removed image layer ${indexToRemove}. ${imageStack.images.length} images remaining.`);
+            } else { console.error(`Failed to splice image at index ${indexToRemove}`); return; }
+            const thumbnailContainers = thumbnailStrip.querySelectorAll('.thumbnail-container');
+            if (thumbnailContainers[indexToRemove]) { thumbnailStrip.removeChild(thumbnailContainers[indexToRemove]); }
+            else { console.warn(`Could not find thumbnail container at index ${indexToRemove} to remove from UI.`); }
+            const remainingContainers = thumbnailStrip.querySelectorAll('.thumbnail-container');
+            remainingContainers.forEach((container, newIndex) => {
+                container.dataset.index = newIndex;
+                const img = container.querySelector('.thumbnail');
+                const btn = container.querySelector('.remove-thumbnail-btn');
+                if (img) {
+                    const oldTitle = img.title; const nameMatch = oldTitle.match(/: (.*) \(/);
+                    const fileName = nameMatch ? nameMatch[1] : `Image ${newIndex}`;
+                    img.title = `Layer ${newIndex}: ${fileName} (${imageStack.width}x${imageStack.height})`;
+                }
+                if (btn) { btn.onclick = (event) => { event.stopPropagation(); removeImage(newIndex); }; }
+            });
+            masterImageData = null; layerMatrix = null; historyStack = [];
+            if (imageStack.images.length === 1) { masterImageData = imageStack.images[0]; displayMasterImage(); } else { displayMasterImage(); }
+            updateComposeButtonState(); updateSaveButtonState(); updateUndoButtonState();
+            console.log(`Image stack size now ${imageStack.images.length}`);
+            if (imageStack.images.length < 2) {
+                updateStatus(`Image removed. Need at least two images to compose. ${imageStack.images.length} images remaining.`);
+            } else {
+                updateStatus(`Image removed. Click Compose! to update. ${imageStack.images.length} images remaining.`);
+            }
+        }
+
+        // --- Composition Function (unchanged wrapper) ---
+        async function composeImages() {
+            if (imageStack.images.length < 2) { updateStatus('Need at least two images to compose'); return; }
+            if (isComposing) { updateStatus("Composition already in progress."); return; }
+            setUIBusy(true); updateStatus('Starting composition with Max-Deviation selection...');
+            await new Promise(resolve => setTimeout(resolve, 10));
+            const thresholdInternal = getThreshold();
+            try {
+                const { imageData, layerMatrix: lm } = await imageStack.compose(thresholdInternal);
+                masterImageData = imageData; layerMatrix = lm; historyStack = [];
+                updateUndoButtonState(); updateSaveButtonState(); displayMasterImage();
+                const percentageThreshold = (thresholdInternal / 255 * 100).toFixed(0);
+                updateStatus(`Composition complete (Max-Deviation). Threshold: ${percentageThreshold}%`);
+            } catch (error) {
+                console.error('Composition failed:', error);
+                updateStatus(`Error during composition: ${error.message}`, true);
+                masterImageData = null; layerMatrix = null; updateSaveButtonState(); displayMasterImage();
+            } finally { setUIBusy(false); }
+        }
+
+        // --- Display Function (unchanged) ---
+        function displayMasterImage() {
+            const emptyColor = document.body.classList.contains('dark-mode') ? '#3c3c3c' : '#cccccc';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = emptyColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (!masterImageData) { return; }
+            if (masterImageData.width > 0 && masterImageData.height > 0 &&
+                (masterImageData.width !== canvas.width || masterImageData.height !== canvas.height)) {
+                console.warn(`ImageData/canvas dimension mismatch. Resizing canvas to ${masterImageData.width}x${masterImageData.height}.`);
+                canvas.width = masterImageData.width; canvas.height = masterImageData.height;
+                ctx.fillStyle = emptyColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else if (masterImageData.width === 0 || masterImageData.height === 0){
+                console.warn("Master image data has zero dimensions, cannot display."); return;
+            }
+            try { ctx.putImageData(masterImageData, 0, 0); }
+            catch (e) { console.error("Error using putImageData:", e); updateStatus("Error displaying image. Canvas might be too large?", true);
+                ctx.fillStyle = '#ffcccc'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+        }
+
+        // --- Canvas Interaction (unchanged) ---
+        function setupCanvasEvents() {
+            canvas.addEventListener('mousedown', (e) => {
+                if (isComposing || !masterImageData || drawingLasso || drawingBrush) { return; }
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+                const safeX = Math.max(0, Math.min(x, canvas.width - 1));
+                const safeY = Math.max(0, Math.min(y, canvas.height - 1));
+                let actionDesc = "";
+                if (e.shiftKey || e.ctrlKey || e.altKey) {
+                    if (e.shiftKey) { actionDesc = "gradient overlay lasso"; isGradientLasso = true; updateStatus(`Drawing gradient overlay lasso... Drag and release Shift+Mouse.`); }
+                    else if (e.ctrlKey) {
+                        if (imageStack.images.length < 2 || !layerMatrix) { updateStatus("Patch lasso (Ctrl+Drag) requires multiple images loaded and composed."); return; }
+                        actionDesc = "patch lasso"; isPatchLasso = true; updateStatus(`Drawing patch lasso... Drag and release Ctrl+Mouse.`);
+                    } else if (e.altKey) { actionDesc = "blend lasso"; isBlendLasso = true; updateStatus(`Drawing blend lasso... Drag and release Alt+Mouse.`); }
+                    drawingLasso = true; lassoPoints = [{x: safeX, y: safeY}];
+                    saveStateForUndo(actionDesc);
+                    window.addEventListener('mousemove', handleGlobalMouseMove);
+                    window.addEventListener('mouseup', handleGlobalMouseUp);
+                    redrawCanvasWithLasso();
+                } else {
+                    if (imageStack.images.length < 2 || !layerMatrix) { updateStatus("Brush tool requires multiple images loaded and composed."); return; }
+                    drawingBrush = true; lassoPoints = [{ x: safeX, y: safeY }];
+                    saveStateForUndo("brush stroke");
+                    updateStatus('Drawing with brush... Release to apply from underlying layer.');
+                    window.addEventListener('mousemove', handleBrushMouseMove);
+                    window.addEventListener('mouseup', handleBrushMouseUp);
+                    redrawCanvasWithBrushPreview();
+                }
+            });
+        }
+
+        function handleBrushMouseMove(e) {
+            if (!drawingBrush) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX; const y = (e.clientY - rect.top) * scaleY;
+            const safeX = Math.max(0, Math.min(x, canvas.width - 1)); const safeY = Math.max(0, Math.min(y, canvas.height - 1));
+            lassoPoints.push({x: safeX, y: safeY}); redrawCanvasWithBrushPreview();
+        }
+        function handleBrushMouseUp(e) {
+            if (!drawingBrush) return;
+            drawingBrush = false;
+            window.removeEventListener('mousemove', handleBrushMouseMove);
+            window.removeEventListener('mouseup', handleBrushMouseUp);
+            if (lassoPoints.length < 1) { clearLassoAndRedraw(); return; }
+            applyBrushStroke();
+        }
+        function redrawCanvasWithBrushPreview() {
+            if (!masterImageData) return;
+            ctx.putImageData(masterImageData, 0, 0);
+            if (lassoPoints.length < 1 || !drawingBrush) return;
+            ctx.globalAlpha = 1.0; ctx.beginPath(); ctx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+            for (let i = 1; i < lassoPoints.length; i++) { ctx.lineTo(lassoPoints[i].x, lassoPoints[i].y); }
+            ctx.strokeStyle = 'rgba(255, 105, 180, 0.7)'; ctx.lineWidth = getBrushSize();
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+        }
+        function applyBrushStroke() {
+            if (!masterImageData || !layerMatrix || imageStack.images.length < 2 || lassoPoints.length === 0) {
+                console.warn("Brush application conditions not met."); clearLassoAndRedraw(); return;
+            }
+            const w = masterImageData.width; const h = masterImageData.height; const brushSize = getBrushSize();
+            const startX = Math.floor(lassoPoints[0].x); const startY = Math.floor(lassoPoints[0].y);
+            const startMatrixIndex = startY * w + startX;
+            if (startMatrixIndex < 0 || startMatrixIndex >= layerMatrix.length) {
+                updateStatus("Error: Invalid starting point for brush.", true); console.error(`Invalid startMatrixIndex: ${startMatrixIndex}`); clearLassoAndRedraw(); return;
+            }
+            const selectedLayer = layerMatrix[startMatrixIndex];
+            const sourceImage = imageStack.images[selectedLayer];
+            if (!sourceImage) { updateStatus(`Error: Could not find source image for layer ${selectedLayer}.`, true); clearLassoAndRedraw(); return; }
+            const maskCanvas = document.createElement('canvas'); maskCanvas.width = w; maskCanvas.height = h;
+            const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+            maskCtx.beginPath(); maskCtx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+            for (let i = 1; i < lassoPoints.length; i++) { maskCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y); }
+            maskCtx.lineWidth = brushSize; maskCtx.lineCap = 'round'; maskCtx.lineJoin = 'round';
+            maskCtx.strokeStyle = 'white'; maskCtx.stroke();
+            if (lassoPoints.length < 3) {
+                maskCtx.beginPath(); maskCtx.arc(startX, startY, brushSize / 2, 0, Math.PI * 2, false);
+                maskCtx.fillStyle = 'white'; maskCtx.fill();
+            }
+            const maskData = maskCtx.getImageData(0, 0, w, h).data;
+            const sourceData = sourceImage.data; const targetData = masterImageData.data;
+            let pixelsPatched = 0;
+            for (let i = 0; i < maskData.length; i += 4) {
+                if (maskData[i + 3] > 0) {
+                    targetData[i] = sourceData[i]; targetData[i + 1] = sourceData[i + 1];
+                    targetData[i + 2] = sourceData[i + 2]; targetData[i + 3] = sourceData[i + 3];
+                    pixelsPatched++;
+                }
+            }
+            lassoPoints = []; displayMasterImage();
+            updateStatus(`Applied brush stroke from layer ${selectedLayer} (${pixelsPatched} pixels).`);
+        }
+
+        function handleGlobalMouseMove(e) {
+            if (!drawingLasso || !masterImageData || isComposing) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX; const y = (e.clientY - rect.top) * scaleY;
+            const safeX = Math.max(0, Math.min(x, canvas.width - 1)); const safeY = Math.max(0, Math.min(y, canvas.height - 1));
+            const lastPoint = lassoPoints.length > 0 ? lassoPoints[lassoPoints.length - 1] : null;
+            if (!lastPoint || Math.abs(safeX - lastPoint.x) > 1 || Math.abs(safeY - lastPoint.y) > 1) {
+                lassoPoints.push({x: safeX, y: safeY});
+            }
+            redrawCanvasWithLasso();
+        }
+        function handleGlobalMouseUp(e) {
+            if (!drawingLasso || !masterImageData || isComposing) return;
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+            const wasDrawingLasso = drawingLasso; const wasPatchLasso = isPatchLasso;
+            const wasBlendLasso = isBlendLasso; const wasGradientLasso = isGradientLasso;
+            drawingLasso = false; isPatchLasso = false; isBlendLasso = false; isGradientLasso = false;
+            const modifierStillPressed = (wasPatchLasso && e.ctrlKey) || (wasBlendLasso && e.altKey) || (wasGradientLasso && e.shiftKey);
+            if (!modifierStillPressed && wasDrawingLasso) {
+                console.log("Modifier key released before mouse up, cancelling.");
+                clearLassoAndRedraw(); updateStatus('Lasso cancelled (modifier key released).'); lassoPoints = []; return;
+            }
+            if (lassoPoints.length < 3) {
+                console.log("Lasso too small, cancelling."); clearLassoAndRedraw();
+                updateStatus('Lasso too small, action cancelled.'); lassoPoints = []; return;
+            }
+            if (wasPatchLasso) { applyLassoPatch(); }
+            else if (wasBlendLasso) { applyLassoBlend(); }
+            else if (wasGradientLasso) { applyLassoGradient(); }
+        }
+
+        function isPointInLasso(x, y, points) {
+            let inside = false;
+            for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+                const xi = points[i].x, yi = points[i].y; const xj = points[j].x, yj = points[j].y;
+                const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+        function redrawCanvasWithLasso() {
+            if (!masterImageData) return;
+            ctx.putImageData(masterImageData, 0, 0);
+            if (lassoPoints.length === 0 || !drawingLasso) return;
+            ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+            for (let i = 1; i < lassoPoints.length; i++) { ctx.lineTo(lassoPoints[i].x, lassoPoints[i].y); }
+            let fillStyle, strokeStyle;
+            if (isPatchLasso) { fillStyle = 'rgba(0, 255, 0, 0.3)'; strokeStyle = 'rgba(0, 100, 0, 0.7)'; }
+            else if (isBlendLasso) { fillStyle = 'rgba(255, 255, 0, 0.3)'; strokeStyle = 'rgba(100, 100, 0, 0.7)'; }
+            else if (isGradientLasso) { fillStyle = 'rgba(255, 105, 180, 0.4)'; strokeStyle = 'rgba(255, 20, 147, 0.8)'; }
+            else { fillStyle = 'rgba(150, 150, 150, 0.3)'; strokeStyle = 'rgba(50, 50, 50, 0.7)'; }
+            ctx.fillStyle = fillStyle; ctx.strokeStyle = strokeStyle; ctx.lineWidth = 1;
+            if (lassoPoints.length > 2) { ctx.closePath(); ctx.fill(); }
+            ctx.stroke();
+            if (lassoPoints.length > 0) {
+                const lastPt = lassoPoints[lassoPoints.length - 1];
+                ctx.fillStyle = strokeStyle; ctx.fillRect(lastPt.x - 1, lastPt.y - 1, 3, 3);
+            }
+            ctx.globalAlpha = 1.0;
+        }
+        function clearLassoAndRedraw() { lassoPoints = []; displayMasterImage(); }
+
+        function applyLassoPatch() {
+            if (!masterImageData || !layerMatrix || imageStack.images.length < 2 || lassoPoints.length < 3) {
+                console.warn("Lasso patch conditions not met."); clearLassoAndRedraw(); return;
+            }
+            const w = masterImageData.width; const h = masterImageData.height;
+            const startX = Math.floor(lassoPoints[0].x); const startY = Math.floor(lassoPoints[0].y);
+            const startMatrixIndex = startY * w + startX;
+            if (startMatrixIndex < 0 || startMatrixIndex >= layerMatrix.length) {
+                updateStatus("Error: Invalid starting point for patch lasso.", true);
+                console.error(`Invalid startMatrixIndex: ${startMatrixIndex}`); clearLassoAndRedraw(); return;
+            }
+            const selectedLayer = layerMatrix[startMatrixIndex];
+            if (selectedLayer === undefined || selectedLayer >= imageStack.images.length) {
+                updateStatus(`Error: Invalid layer data (${selectedLayer}) at patch lasso start.`, true);
+                console.error(`Invalid selectedLayer: ${selectedLayer}`); clearLassoAndRedraw(); return;
+            }
+            const sourceImage = imageStack.images[selectedLayer];
+            const sourceData = sourceImage.data; const targetData = masterImageData.data;
+            const minX = Math.max(0, Math.floor(Math.min(...lassoPoints.map(p => p.x))));
+            const maxX = Math.min(w - 1, Math.ceil(Math.max(...lassoPoints.map(p => p.x))));
+            const minY = Math.max(0, Math.floor(Math.min(...lassoPoints.map(p => p.y))));
+            const maxY = Math.min(h - 1, Math.ceil(Math.max(...lassoPoints.map(p => p.y))));
+            let updatedPixels = 0;
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    if (isPointInLasso(x + 0.5, y + 0.5, lassoPoints)) {
+                        const targetIdx = (y * w + x) * 4;
+                        const sourceIdx = (y * w + x) * 4;
+                        if (targetIdx + 3 < targetData.length && sourceIdx + 3 < sourceData.length) {
+                            targetData[targetIdx] = sourceData[sourceIdx];
+                            targetData[targetIdx+1] = sourceData[sourceIdx+1];
+                            targetData[targetIdx+2] = sourceData[sourceIdx+2];
+                            targetData[targetIdx+3] = sourceData[sourceIdx+3];
+                            updatedPixels++;
+                        }
+                    }
+                }
+            }
+            clearLassoAndRedraw();
+            updateStatus(`Applied patch lasso from layer ${selectedLayer} (${updatedPixels} pixels).`);
+        }
+
+        function applyLassoBlend() {
+            if (!masterImageData || lassoPoints.length < 3) { console.warn("Lasso blend conditions not met."); clearLassoAndRedraw(); return; }
+            const w = masterImageData.width; const h = masterImageData.height;
+            const originalDataCopy = new Uint8ClampedArray(masterImageData.data);
+            const targetData = masterImageData.data;
+            const minX = Math.max(0, Math.floor(Math.min(...lassoPoints.map(p => p.x))));
+            const maxX = Math.min(w - 1, Math.ceil(Math.max(...lassoPoints.map(p => p.x))));
+            const minY = Math.max(0, Math.floor(Math.min(...lassoPoints.map(p => p.y))));
+            const maxY = Math.min(h - 1, Math.ceil(Math.max(...lassoPoints.map(p => p.y))));
+            let updatedPixels = 0; const radius = BLEND_LASSO_RADIUS; const radiusSq = radius * radius;
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    if (isPointInLasso(x + 0.5, y + 0.5, lassoPoints)) {
+                        let r=0,g=0,b=0,a=0,cnt=0; const cX=x; const cY=y;
+                        for(let ky=-radius;ky<=radius;ky++){
+                            for(let kx=-radius;kx<=radius;kx++){
+                                if(kx*kx+ky*ky>radiusSq) continue;
+                                const nx=cX+kx; const ny=cY+ky;
+                                if(nx>=0&&nx<w&&ny>=0&&ny<h){
+                                    if(isPointInLasso(nx+0.5,ny+0.5,lassoPoints)){
+                                        const idx=(ny*w+nx)*4;
+                                        if(idx+3<originalDataCopy.length){
+                                            r+=originalDataCopy[idx]; g+=originalDataCopy[idx+1];
+                                            b+=originalDataCopy[idx+2]; a+=originalDataCopy[idx+3]; cnt++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if(cnt>0){
+                            const targetIdx=(y*w+x)*4;
+                            if(targetIdx+3<targetData.length){
+                                targetData[targetIdx]=Math.round(r/cnt); targetData[targetIdx+1]=Math.round(g/cnt);
+                                targetData[targetIdx+2]=Math.round(b/cnt); targetData[targetIdx+3]=Math.round(a/cnt);
+                                updatedPixels++;
+                            }
+                        }
+                    }
+                }
+            }
+            clearLassoAndRedraw();
+            updateStatus(`Applied blend/feather effect (${updatedPixels} pixels inside lasso).`);
+        }
+
+        function applyLassoGradient() {
+            if (!masterImageData || lassoPoints.length < 3) { console.warn("Lasso gradient conditions not met."); clearLassoAndRedraw(); return; }
+            console.log("Starting applyLassoGradient (Overlay Mode)...");
+            const w = masterImageData.width; const h = masterImageData.height;
+            const originalData = new Uint8ClampedArray(masterImageData.data);
+            const targetData = masterImageData.data;
+            const minX = Math.max(0, Math.floor(Math.min(...lassoPoints.map(p => p.x))));
+            const maxX = Math.min(w - 1, Math.ceil(Math.max(...lassoPoints.map(p => p.x))));
+            const minY = Math.max(0, Math.floor(Math.min(...lassoPoints.map(p => p.y))));
+            const maxY = Math.min(h - 1, Math.ceil(Math.max(...lassoPoints.map(p => p.y))));
+            const gradWidth = maxX - minX; const gradHeight = maxY - minY;
+            const isHorizontal = gradWidth >= gradHeight; const len = isHorizontal ? gradWidth : gradHeight;
+            console.log(`Gradient direction: ${isHorizontal ? 'Horizontal' : 'Vertical'}, Length: ${len}`);
+            const sampleW = Math.max(1, Math.floor(Math.min(gradWidth, gradHeight) * 0.1));
+            let sR=0,sG=0,sB=0,sA=0,sCnt=0; let eR=0,eG=0,eB=0,eA=0,eCnt=0;
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    if (isPointInLasso(x + 0.5, y + 0.5, lassoPoints)) {
+                        const idx = (y * w + x) * 4;
+                        if (idx + 3 >= originalData.length) continue;
+                        const cR=originalData[idx],cG=originalData[idx+1],cB=originalData[idx+2],cA=originalData[idx+3];
+                        if(isHorizontal){
+                            if(x<minX+sampleW){sR+=cR;sG+=cG;sB+=cB;sA+=cA;sCnt++;}
+                            else if(x>maxX-sampleW){eR+=cR;eG+=cG;eB+=cB;eA+=cA;eCnt++;}
+                        }else{
+                            if(y<minY+sampleW){sR+=cR;sG+=cG;sB+=cB;sA+=cA;sCnt++;}
+                            else if(y>maxY-sampleW){eR+=cR;eG+=cG;eB+=cB;eA+=cA;eCnt++;}
+                        }
+                    }
+                }
+            }
+            const c1={r:sCnt>0?sR/sCnt:128,g:sCnt>0?sG/sCnt:128,b:sCnt>0?sB/sCnt:128,a:sCnt>0?sA/sCnt:255};
+            const c2={r:eCnt>0?eR/eCnt:128,g:eCnt>0?eG/eCnt:128,b:eCnt>0?eB/eCnt:128,a:eCnt>0?eA/eCnt:255};
+            if(sCnt===0||eCnt===0){console.warn("Could not sample start/end colors.");updateStatus("Warning: Could not sample gradient colors.");}
+            else{console.log(`Start Color: R=${c1.r.toFixed(0)} G=${c1.g.toFixed(0)} B=${c1.b.toFixed(0)}`);
+                 console.log(`End Color: R=${c2.r.toFixed(0)} G=${c2.g.toFixed(0)} B=${c2.b.toFixed(0)}`);}
+            let updatedPixels = 0; const op = GRADIENT_LASSO_OPACITY; const invOp = 1 - op;
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    if (isPointInLasso(x + 0.5, y + 0.5, lassoPoints)) {
+                        let t = 0;
+                        if (len > 0) { t = isHorizontal ? (x - minX) / len : (y - minY) / len; t = Math.max(0, Math.min(1, t)); }
+                        const gradR = c1.r*(1-t)+c2.r*t; const gradG = c1.g*(1-t)+c2.g*t;
+                        const gradB = c1.b*(1-t)+c2.b*t;
+                        const idx = (y * w + x) * 4;
+                        if (idx + 3 < targetData.length) {
+                            const oR=originalData[idx],oG=originalData[idx+1],oB=originalData[idx+2],oA=originalData[idx+3];
+                            targetData[idx]=Math.round(oR*invOp+gradR*op);
+                            targetData[idx+1]=Math.round(oG*invOp+gradG*op);
+                            targetData[idx+2]=Math.round(oB*invOp+gradB*op);
+                            targetData[idx+3]=oA;
+                            updatedPixels++;
+                        }
+                    }
+                }
+            }
+            console.log(`Gradient overlay applied. Updated pixels: ${updatedPixels}`);
+            clearLassoAndRedraw();
+            updateStatus(`Applied gradient overlay effect (${updatedPixels} pixels at ${op*100}% opacity).`);
+        }
+
+        // --- Utility and Reset Functions (unchanged) ---
+        function setTracyRosePreset() {
+            if (isComposing) return;
+            const slider = document.getElementById('threshold');
+            const valueDisplay = document.getElementById('threshold-value');
+            if (slider && valueDisplay) {
+                slider.value = 0.13;
+                const percentage = (parseFloat(slider.value) * 100).toFixed(0);
+                valueDisplay.textContent = percentage + '%';
+            }
+            updateStatus('Tracy Rose preset applied (Threshold ~13%). Click Compose to apply.');
+            console.log('Tracy Rose preset applied');
+        }
+        function resetApplicationState(clearFileInput = true) {
+            console.log("Resetting application state...");
+            imageStack = new ImageStack(); masterImageData = null; layerMatrix = null;
+            lassoPoints = []; drawingLasso = false; isPatchLasso = false; isBlendLasso = false;
+            isGradientLasso = false; drawingBrush = false; historyStack = []; isComposing = false;
+            if (ctx && canvas) {
+                canvas.width = 300; canvas.height = 150;
+                const emptyColor = document.body.classList.contains('dark-mode') ? '#3c3c3c' : '#cccccc';
+                ctx.fillStyle = emptyColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            if (clearFileInput && document.getElementById('imageInput')) { document.getElementById('imageInput').value = ''; }
+            if (thumbnailStrip) thumbnailStrip.innerHTML = '';
+            updateComposeButtonState(); updateUndoButtonState(); updateSaveButtonState();
+            const thresholdSlider = document.getElementById('threshold');
+            const thresholdValueDisplay = document.getElementById('threshold-value');
+            if (thresholdSlider) thresholdSlider.value = 0.15;
+            if (thresholdValueDisplay) {
+                const percentage = (parseFloat(thresholdSlider.value) * 100).toFixed(0);
+                thresholdValueDisplay.textContent = percentage + '%';
+            }
+            const brushSizeSlider = document.getElementById('brushSize');
+            const brushSizeValueDisplay = document.getElementById('brushSize-value');
+            if (brushSizeSlider) brushSizeSlider.value = 100;
+            if (brushSizeValueDisplay) brushSizeValueDisplay.textContent = brushSizeSlider.value + 'px';
+            setUIBusy(false);
+        }
+        function resetApplication() { resetApplicationState(true); updateStatus('Application reset. Upload images to begin.'); }
+        function saveImage() {
+            if (!masterImageData) { updateStatus('No image to save', true); return; }
+            if (isComposing) { updateStatus("Cannot save while composing.", true); return; }
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = masterImageData.width; tempCanvas.height = masterImageData.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            try {
+                tempCtx.putImageData(masterImageData, 0, 0);
+                const dataURL = tempCanvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = 'Aquiplicity_Master_MaxDeviation.png';
+                link.href = dataURL; document.body.appendChild(link);
+                link.click(); document.body.removeChild(link);
+                updateStatus(`Master image saved as ${link.download} (${masterImageData.width}x${masterImageData.height})`);
+                console.log('Image saved');
+            } catch (error) {
+                console.error("Error saving image:", error);
+                updateStatus("Error saving image. Canvas might be too large or tainted.", true);
+            }
+        }
+    </script>
+</body>
+</html>
